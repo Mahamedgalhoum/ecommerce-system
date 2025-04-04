@@ -1,0 +1,60 @@
+package service;
+
+import error.EmptyCartException;
+import error.InsufficientBalanceException;
+import model.Cart;
+import model.Customer;
+import model.Product;
+
+public class CheckoutService {
+
+    private final CartTotalCalculator cartTotalCalculator;
+
+    public CheckoutService(CartTotalCalculator cartTotalCalculator) {
+        this.cartTotalCalculator = cartTotalCalculator;
+    }
+
+    public void checkout(Customer customer, Cart cart) {
+        if (cart.isEmpty()) {
+            throw new EmptyCartException("Cart is empty.");
+        }
+
+        double totalAmount = cartTotalCalculator.calculateTotalAmount(cart);
+        double subtotal = cartTotalCalculator.calculateSubtotal(cart);
+        double shippingCost = cartTotalCalculator.calculateShippingCost(cart);
+
+        System.out.println("** Shipment notice **");
+        cart.getItems().forEach((product, quantity) -> {
+            if (product instanceof model.Shippable) {
+                System.out.println(quantity + "x " + product.getName() + " " + ((model.Shippable) product).getWeight() + "g");
+            }
+        });
+
+        double totalWeight = 0;
+        for (Product product : cart.getItems().keySet()) {
+            if (product instanceof model.Shippable) {
+                totalWeight += ((model.Shippable) product).getWeight();
+            }
+        }
+        System.out.println("Total package weight " + totalWeight / 1000 + "kg");
+
+        System.out.println("** Checkout receipt **");
+        cart.getItems().forEach((product, quantity) -> {
+            System.out.println(quantity + "x " + product.getName() + " " + product.getPrice() * quantity);
+        });
+
+        System.out.println("----------------------");
+        System.out.println("Subtotal " + subtotal);
+        System.out.println("Shipping " + shippingCost);
+        System.out.println("Amount " + totalAmount);
+
+        if (customer.getBalance() < totalAmount) {
+            throw new InsufficientBalanceException("Not enough balance.");
+        }
+
+        customer.deductBalance(totalAmount);
+
+     System.out.println("Checkout successful!");
+     System.out.println("Remaining balance: " + customer.getBalance());
+    }
+}
